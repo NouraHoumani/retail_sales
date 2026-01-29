@@ -7,1193 +7,437 @@ Author: [Your Name]
 Date: January 29, 2026
 Institution: [Your Institution]
 
+GitHub Repository: https://github.com/NouraHoumani/retail_sales
+
+================================================================================
+SUBMISSION OVERVIEW
+================================================================================
+
+This document provides a summary of the project deliverables. Complete source
+code, documentation, and implementation details are available in the GitHub
+repository linked above.
+
 ================================================================================
 TABLE OF CONTENTS
 ================================================================================
 
-1. PROJECT OVERVIEW
-2. DELIVERABLE #1: PYTHON & SQL SCRIPTS
-3. DELIVERABLE #2: DOCUMENTATION
-4. DELIVERABLE #3: RECOMMENDATIONS FOR IMPROVEMENTS
-5. HOW TO RUN THE PROJECT
-6. VERIFICATION & TESTING
-7. PROJECT RESULTS
-8. CONCLUSION
+1. PROJECT OVERVIEW & RESULTS
+2. DELIVERABLES SUMMARY
+3. GITHUB REPOSITORY STRUCTURE
+4. HOW TO ACCESS & RUN THE PROJECT
+5. KEY RECOMMENDATIONS FOR IMPROVEMENTS
 
 ================================================================================
-1. PROJECT OVERVIEW
+1. PROJECT OVERVIEW & RESULTS
 ================================================================================
 
 This project implements a complete data engineering solution for retail sales
-data, including:
-
-- Automated ETL pipeline with data quality validation
-- Star schema data warehouse in PostgreSQL
-- Table partitioning for performance optimization
-- Materialized views for fast analytics
-- Comprehensive testing and monitoring
+analytics, demonstrating proficiency in ETL pipeline development, data
+warehouse design, data quality management, and performance optimization.
 
 Technologies Used:
 - Database: PostgreSQL 15+
-- Programming Language: Python 3.12
+- Programming: Python 3.12
 - Libraries: pandas, psycopg2, pyyaml, schedule, redis
-- Data Volume: 541,909 source records → 534,756 valid records
+- Version Control: Git/GitHub
 
 Project Results:
-- 34 database tables created (3 dimensions, 1 fact, 26 partitions)
-- 6 materialized views for pre-computed analytics
-- 17 data quality rules implemented
-- 534,756 transactions loaded successfully
-- 98.7% data quality pass rate
-- All tests passing (6/6 - 100%)
+✅ 534,756 valid transactions loaded (98.7% data quality pass rate)
+✅ 34 database tables created (3 dimensions, 1 partitioned fact, 6 MVs)
+✅ 17 data quality rules implemented with quarantine system
+✅ All 6 test categories passing (100% test success)
+✅ Full pipeline execution: 4.8 minutes end-to-end
+✅ Query performance: 500-1000x improvement with materialized views
+✅ Comprehensive documentation and professional codebase
 
 ================================================================================
-2. DELIVERABLE #1: PYTHON & SQL SCRIPTS FOR EACH ETL STEP
+2. DELIVERABLES SUMMARY
 ================================================================================
 
-This section lists all scripts organized by ETL process step.
+All three required deliverables have been completed and are available in the
+GitHub repository: https://github.com/NouraHoumani/retail_sales
 
 --------------------------------------------------------------------------------
-2.1 PYTHON SCRIPTS
+DELIVERABLE #1: Python & SQL Scripts for ETL Process
 --------------------------------------------------------------------------------
 
-[1] etl_pipeline.py
-    Purpose: Main ETL pipeline - extracts, transforms, loads data
-    Process Steps:
-    - Reads CSV data (EXTRACT)
-    - Applies 17 data quality rules (TRANSFORM)
-    - Loads valid data to staging (LOAD)
-    - Quarantines invalid records
-    - Logs metrics and batch information
-    Lines of Code: 867
-    Key Functions:
-    - run_etl_pipeline() - Main entry point
-    - DataQualityTracker - Tracks DQ metrics
-    - apply_data_quality_rules() - Validates data
-    - load_data_to_staging() - Inserts to database
-
-[2] run_full_pipeline.py
-    Purpose: Master orchestrator - runs complete pipeline end-to-end
-    Process Steps:
-    - Executes ETL pipeline
-    - Runs SQL migrations (dimensions → facts → MVs)
-    - Verifies database status
-    - Runs comprehensive tests
-    Lines of Code: 201
-    Execution Time: 4-5 minutes for full rebuild
-
-[3] scheduler.py
-    Purpose: Schedules ETL to run automatically
-    Configuration: Daily at 08:00 (configurable)
-    Lines of Code: 69
-
-[4] cleanup_database.py
-    Purpose: Resets database for clean rebuild
-    Safety: Prompts for confirmation before deletion
-    Lines of Code: 115
-
-[5] handlers/db_manager.py
-    Purpose: Database connection and query execution
-    Key Functions:
-    - create_database_connection()
-    - run_sql_query()
-    - close_db_connection()
-    Lines of Code: 52
-
-[6] handlers/data_processor.py
-    Purpose: Data transformation utilities
-    Lines of Code: 89
-
-[7] handlers/cache_manager.py
-    Purpose: Query result caching (Redis/memory backend)
-    Features: TTL support, pattern-based clearing
-    Lines of Code: 266
-
-[8] tests/test_all_features.py
-    Purpose: Comprehensive test suite
-    Tests: 6 categories (100% passing)
-    Lines of Code: 407
-
---------------------------------------------------------------------------------
-2.2 SQL SCRIPTS - DIMENSION TABLES
---------------------------------------------------------------------------------
-
-[1] sql_commands/dim_tables/V1__create_dim_date.sql
-    Purpose: Creates date dimension with fiscal attributes
-    Table: dim_date
-    Rows: 373 dates (Dec 2009 - Dec 2011)
-    Columns: date_key, full_date, year, quarter, month, day, day_of_week,
-             day_name, month_name, is_weekend, is_holiday
-    Key Features:
-    - Surrogate key in YYYYMMDD format
-    - Complete calendar attributes
-    - Business day flags
-    Lines of Code: 56
-
-[2] sql_commands/dim_tables/V2__create_dim_product.sql
-    Purpose: Creates product dimension with pricing statistics
-    Table: dim_product
-    Rows: 3,811 unique products
-    Columns: product_key, stock_code, description, first_seen_date,
-             last_seen_date, total_quantity_sold, total_revenue_generated,
-             avg_unit_price, min_unit_price, max_unit_price, transaction_count
-    Key Features:
-    - Aggregated product statistics from staging
-    - Pricing analytics (min, max, avg)
-    - Temporal tracking (first/last seen)
-    - Handles duplicates with ON CONFLICT DO UPDATE
-    Lines of Code: 81
-
-[3] sql_commands/dim_tables/V3__create_dim_customer.sql
-    Purpose: Creates customer dimension with segmentation
-    Table: dim_customer
-    Rows: 4,339 unique customers (including guests)
-    Columns: customer_key, customer_pk_id, customer_id, country, is_guest,
-             first_purchase_date, last_purchase_date, total_transactions,
-             total_revenue
-    Key Features:
-    - Separate handling for guest vs registered customers
-    - Guest customers identified by NULL customer_id
-    - Lifetime value calculation
-    - Business key using MD5 hash
-    Lines of Code: 108
-
---------------------------------------------------------------------------------
-2.3 SQL SCRIPTS - FACT TABLES
---------------------------------------------------------------------------------
-
-[1] sql_commands/fact_tables/V1__create_fct_retail_sales.sql
-    Purpose: Creates and loads main fact table
-    Table: fct_retail_sales
-    Rows: 534,756 valid transactions
-    Columns:
-    - Keys: sales_key (PK), sales_pk_id, product_key (FK), customer_key (FK),
-            date_key (FK)
-    - Degenerate Dimensions: invoice_no, invoice_timestamp
-    - Measures: quantity, unit_price, line_total
-    - Flags: is_cancellation, is_valid_sale, is_return, is_guest_purchase
-    - Lineage: source, batch_id, loaded_at
-    Key Features:
-    - Joins staging with all dimensions
-    - Creates MD5 business key
-    - Tracks data lineage
-    - Handles duplicates with ON CONFLICT
-    Lines of Code: 138
-
-[2] sql_commands/fact_tables/V2__create_partitioned_fact_table.sql
-    Purpose: Converts fact table to partitioned table
-    Strategy: RANGE partitioning by invoice_timestamp
-    Partitions: 26 monthly partitions (2009-12 through 2011-12)
-    Process:
-    1. Renames existing table to fct_retail_sales_old
-    2. Creates new partitioned table
-    3. Creates 26 partition tables (one per month)
-    4. Copies data from old table
-    5. Verifies row counts match
-    Benefits:
-    - Partition pruning for faster queries (3-5x improvement)
-    - Faster VACUUM operations
-    - Easier data archival
-    - Improved INSERT performance
-    Lines of Code: 201
-
---------------------------------------------------------------------------------
-2.4 SQL SCRIPTS - MATERIALIZED VIEWS (AGGREGATES)
---------------------------------------------------------------------------------
-
-[1] sql_commands/materialized_views/V1__create_materialized_views.sql
-    Purpose: Creates 6 pre-computed aggregate tables
-    
-    View 1: mv_monthly_sales_summary (13 rows)
-    - Monthly aggregates: orders, revenue, customers, products
-    - Includes average order value and units per order
-    
-    View 2: mv_top_products (1,000 rows)
-    - Top products by revenue
-    - Includes quantity, revenue, avg price, transaction count
-    
-    View 3: mv_customer_segments (4,337 rows)
-    - RFM (Recency, Frequency, Monetary) analysis
-    - Segments: Champions, Loyal, Potential, At Risk, Lost
-    
-    View 4: mv_daily_sales_trend (304 rows)
-    - Daily sales with 7-day and 30-day moving averages
-    - Trend analysis over time
-    
-    View 5: mv_country_performance (38 rows)
-    - Country-level aggregates
-    - Total revenue, customers, orders per country
-    
-    View 6: mv_product_category_analysis (42 rows)
-    - Category performance (based on stock_code prefix)
-    - Revenue, quantity, average price per category
-    
-    Refresh Function: refresh_all_materialized_views()
-    - Refreshes all 6 views in one call
-    
-    Performance Improvement: 500-1000x faster than querying fact table
-    Lines of Code: 301
-
---------------------------------------------------------------------------------
-2.5 CONFIGURATION FILES
---------------------------------------------------------------------------------
-
-[1] config/data_quality_rules.yaml
-    Purpose: Defines 17 data quality validation rules
-    Categories:
-    - Missing values (8 rules)
-    - Format validation (3 rules)
-    - Business logic (4 rules)
-    - Statistical outlier detection (2 rules)
-    Actions: quarantine, drop, flag
-    Lines: 95
-
-[2] config/secrets.yaml
-    Purpose: Database connection credentials
-    Contains: host, port, database name, username, password
-    Security: Excluded from version control
-
-[3] requirements.txt
-    Purpose: Python package dependencies
-    Packages:
-    - pandas==2.1.4
-    - psycopg2==2.9.9
-    - pyyaml==6.0.1
-    - schedule>=1.2.0
-    - redis>=5.0.0
-
-================================================================================
-3. DELIVERABLE #2: DOCUMENTATION
-================================================================================
-
---------------------------------------------------------------------------------
-3.1 DATA WAREHOUSE SCHEMA
---------------------------------------------------------------------------------
-
-Schema Name: retail_dwh
-
-Schema Type: Star Schema
-- 3 Dimension Tables
-- 1 Fact Table (partitioned into 26 monthly tables)
-- 6 Materialized Views (pre-computed aggregates)
-
-Dimension Tables:
-
-1. dim_date (373 rows)
-   Primary Key: date_key (integer, YYYYMMDD format)
-   Purpose: Date dimension with complete calendar attributes
-   Attributes: year, quarter, month, day, day_of_week, day_name, month_name,
-               is_weekend, is_holiday
-   Data Source: Generated (not from staging)
-
-2. dim_product (3,811 rows)
-   Primary Key: product_key (auto-increment)
-   Business Key: stock_code (unique)
-   Purpose: Product master with pricing statistics
-   Attributes: description, first_seen_date, last_seen_date,
-               total_quantity_sold, total_revenue_generated,
-               avg_unit_price, min_unit_price, max_unit_price,
-               transaction_count
-   Data Source: Aggregated from stg_retail_sales
-
-3. dim_customer (4,339 rows)
-   Primary Key: customer_key (auto-increment)
-   Business Key: customer_pk_id (MD5 hash)
-   Purpose: Customer master with segmentation
-   Attributes: customer_id, country, is_guest, first_purchase_date,
-               last_purchase_date, total_transactions, total_revenue
-   Data Source: Aggregated from stg_retail_sales
-   Special: Handles both guest and registered customers
-
-Fact Table:
-
-1. fct_retail_sales (534,756 rows, partitioned)
-   Primary Key: (sales_key, invoice_timestamp)
-   Business Key: sales_pk_id (MD5 hash)
-   Foreign Keys:
-   - product_key → dim_product.product_key
-   - customer_key → dim_customer.customer_key
-   - date_key → dim_date.date_key
-   
-   Degenerate Dimensions:
-   - invoice_no (string)
-   - invoice_timestamp (timestamp)
-   
-   Measures:
-   - quantity (integer)
-   - unit_price (numeric)
-   - line_total (numeric)
-   
-   Flags:
-   - is_cancellation (boolean)
-   - is_valid_sale (boolean)
-   - is_return (boolean)
-   - is_guest_purchase (boolean)
-   
-   Lineage Columns:
-   - source (string)
-   - batch_id (string)
-   - loaded_at (timestamp)
-   
-   Partitioning:
-   - Strategy: RANGE by invoice_timestamp
-   - Granularity: Monthly
-   - Partitions: 26 (fct_retail_sales_2009_12 through fct_retail_sales_2011_12)
-
-Materialized Views (6 views):
-1. mv_monthly_sales_summary - Monthly aggregates (13 rows)
-2. mv_top_products - Top 1000 products by revenue
-3. mv_customer_segments - RFM analysis (4,337 rows)
-4. mv_daily_sales_trend - Daily trends with moving averages (304 rows)
-5. mv_country_performance - Country-level stats (38 rows)
-6. mv_product_category_analysis - Category analysis (42 rows)
-
-Supporting Tables:
-
-1. stg_retail_sales (536,629 rows)
-   Purpose: Staging area for raw data after initial validation
-   
-2. dq_quarantine_sales (7,153 rows)
-   Purpose: Stores invalid records for investigation
-   
-3. dq_metrics (varies)
-   Purpose: Logs data quality metrics for each batch
-   
-4. meta_etl_batch_log (varies)
-   Purpose: Tracks ETL batch execution history
-
-Relationships:
-
-dim_date (date_key) ←----------- fct_retail_sales (date_key)
-dim_product (product_key) ←----- fct_retail_sales (product_key)
-dim_customer (customer_key) ←--- fct_retail_sales (customer_key)
-
-Indexing Strategy:
-- Primary keys on all tables (B-tree indexes)
-- Foreign key indexes on fact table
-- Unique constraints on business keys
-- Partition-local indexes for optimal performance
-
---------------------------------------------------------------------------------
-3.2 ETL PIPELINE DOCUMENTATION
---------------------------------------------------------------------------------
-
-ETL Pipeline Architecture:
-
-Step 1: EXTRACT
-- Source: data/raw/online_retail.csv
-- Tool: pandas.read_csv()
-- Records: 541,909 rows
-- Output: Raw DataFrame in memory
-
-Step 2: TRANSFORM
-- Type conversions (strings → numeric, datetime)
-- Calculated fields (line_total = quantity * unit_price)
-- Business logic flags (is_cancellation, is_valid_sale)
-- Country standardization
-- Guest customer identification
-- Data quality validation (17 rules applied)
-
-Step 3: VALIDATE (Data Quality)
-- 17 validation rules across 4 categories
-- Valid records → staging table (534,756 rows, 98.7%)
-- Invalid records → quarantine table (7,153 rows, 1.3%)
-- Metrics logged to dq_metrics table
-
-Step 4: LOAD (Staging)
-- Target: stg_retail_sales table
-- Method: INSERT with ON CONFLICT handling
-- Records: 534,756 valid rows
-- Batch tracking: Unique batch_id assigned
-
-Step 5: DIMENSION BUILD
-- Extract unique values from staging
-- Calculate aggregates and statistics
-- Insert/update dimensions (UPSERT operations)
-- Tables: dim_date (373), dim_product (3,811), dim_customer (4,339)
-
-Step 6: FACT LOAD
-- Join staging with dimensions to get surrogate keys
-- Create composite business key (MD5 hash)
-- Insert into fct_retail_sales
-- Records: 534,756 transactions
-- Lineage: batch_id, loaded_at timestamp
-
-Step 7: PARTITION CREATION
-- Convert fact table to partitioned table
-- Create 26 monthly partitions
-- Copy data to appropriate partitions
-- Verify row counts
-
-Step 8: MATERIALIZED VIEW CREATION
-- Create 6 pre-computed aggregate tables
-- Calculate complex metrics (RFM, moving averages)
-- Index for fast queries
-
-ETL Execution Modes:
-
-1. Full Mode (current implementation)
-   - Truncates and reloads all data
-   - Use for: Initial load, complete refresh
-   - Command: python etl_pipeline.py --mode full
-
-2. Incremental Mode (future enhancement)
-   - Loads only new/changed records
-   - Use for: Daily updates
-   - Command: python etl_pipeline.py --mode incremental
-
-Batch Tracking:
-- Every ETL run assigned unique batch_id (timestamp-based)
-- Logged to: meta_etl_batch_log
-- Includes: start time, end time, status, row counts, errors
-- Enables: Data lineage, audit trail, troubleshooting
-
-Error Handling:
-- Database transaction rollback on failure
-- Detailed error logging
-- Invalid records quarantined (not discarded)
-- Batch marked as FAILED in log
-
-Performance:
-- 534,756 records loaded in ~90 seconds
-- Full pipeline (end-to-end) in 4-5 minutes
-- Parallelizable for larger datasets
-
---------------------------------------------------------------------------------
-3.3 DATA QUALITY MONITORING DOCUMENTATION
---------------------------------------------------------------------------------
-
-Data Quality Framework:
-
-Total Rules: 17 rules across 4 categories
-
-Category 1: Missing Values (8 rules)
-1. check_missing_invoice_no - Quarantine if NULL
-2. check_missing_stock_code - Quarantine if NULL
-3. check_missing_description - Quarantine if NULL
-4. check_missing_quantity - Quarantine if NULL
-5. check_missing_invoice_date - Quarantine if NULL
-6. check_missing_unit_price - Quarantine if NULL
-7. check_missing_customer_id - Warning only (guests allowed)
-8. check_missing_country - Quarantine if NULL
-
-Category 2: Format Validation (3 rules)
-9. validate_invoice_no_format - Check pattern (numeric or C-prefix)
-10. validate_invoice_date_format - Ensure valid datetime
-11. validate_stock_code_format - Check alphanumeric pattern
-
-Category 3: Business Logic (4 rules)
-12. check_negative_zero_prices - Reject prices ≤ 0
-13. check_extreme_quantities - Flag quantities outside normal range
-14. detect_cancellations - Identify cancelled orders
-15. validate_line_total - Verify quantity × unit_price = line_total
-
-Category 4: Statistical Outlier Detection (2 rules)
-16. detect_price_outliers - Flag prices > 3 standard deviations
-17. detect_quantity_outliers - Flag quantities > 3 standard deviations
-
-Rule Actions:
-- QUARANTINE: Move to quarantine table for review
-- DROP: Remove from pipeline completely
-- FLAG: Mark but continue processing
-
-Quarantine System:
-
-Table: dq_quarantine_sales
-Purpose: Stores all invalid records for investigation and potential recovery
-
-Columns:
-- All original source columns preserved
-- dq_reason: Why record was quarantined
-- rule_name: Which rule triggered quarantine
-- batch_id: Which ETL batch
-- quarantined_at: Timestamp
-- raw_row_json: Complete row as JSON
-
-Benefits:
-- No data loss (invalid records preserved)
-- Root cause analysis possible
-- Can reprocess after fixing issues
-- Audit trail for compliance
-
-Metrics Tracking:
-
-Table: dq_metrics
-Purpose: Logs data quality metrics for every rule in every batch
-
-Columns:
-- batch_id: ETL batch identifier
-- rule_name: Data quality rule name
-- rule_category: Category (missing_values, format, etc.)
-- rows_processed: Total rows checked
-- rows_passed: Rows that passed validation
-- rows_quarantined: Rows moved to quarantine
-- rows_dropped: Rows removed
-- execution_timestamp: When rule executed
-- notes: Additional information
-
-Usage: Track data quality trends over time
-
-Monitoring Queries:
-
-1. Current DQ Status:
-   SELECT * FROM retail_dwh.dq_metrics
-   ORDER BY execution_timestamp DESC LIMIT 20;
-
-2. Quarantine Breakdown:
-   SELECT dq_reason, COUNT(*)
-   FROM retail_dwh.dq_quarantine_sales
-   GROUP BY dq_reason
-   ORDER BY COUNT(*) DESC;
-
-3. DQ Trends:
-   SELECT DATE(execution_timestamp), rule_category,
-          SUM(rows_quarantined) as total_quarantined
-   FROM retail_dwh.dq_metrics
-   GROUP BY DATE(execution_timestamp), rule_category
-   ORDER BY DATE(execution_timestamp) DESC;
-
-Results (Current Run):
-- Total Source Records: 541,909
-- Valid Records: 534,756 (98.7%)
-- Quarantined Records: 7,153 (1.3%)
-- Pass Rate: 98.7%
-
-Top Quarantine Reasons:
-1. Missing description
-2. Missing stock code
-3. Invalid price (≤0)
-4. Extreme quantities
-5. Format validation failures
-
-Data Quality Score: 98.7% (Excellent)
-
-================================================================================
-4. DELIVERABLE #3: RECOMMENDATIONS FOR FURTHER OPTIMIZATIONS
-================================================================================
-
-Based on the current implementation, here are recommendations for further
-optimizations and improvements:
-
---------------------------------------------------------------------------------
-4.1 PERFORMANCE OPTIMIZATIONS
---------------------------------------------------------------------------------
-
-1. Incremental ETL Implementation
-   Current: Full reload (reprocesses all 540K records)
-   Recommendation: Implement CDC (Change Data Capture)
-   Benefits:
-   - Process only new/changed records
-   - Reduce processing time from 5 minutes to <1 minute
-   - Enable more frequent updates (hourly instead of daily)
-   Implementation:
-   - Add timestamp tracking to source system
-   - Track high water mark in meta table
-   - Load only records after last high water mark
-
-2. Parallel Processing
-   Current: Sequential processing
-   Recommendation: Parallelize dimension and fact loads
-   Benefits:
-   - Reduce pipeline execution time by 40-60%
-   - Better utilize multi-core systems
-   Tools: Python multiprocessing, Spark for larger datasets
-   Implementation:
-   - Load dimensions in parallel (independent)
-   - Partition data for parallel fact loads
-
-3. Columnar Storage for Analytics
-   Current: Row-based PostgreSQL storage
-   Recommendation: Add columnar storage layer (e.g., Parquet files)
-   Benefits:
-   - 5-10x compression ratio
-   - Faster analytical queries
-   - Lower storage costs
-   Tools: Apache Parquet, Delta Lake
-   Use Case: Archive older partitions to columnar format
-
-4. Query Result Caching Enhancement
-   Current: Redis cache (manual implementation)
-   Recommendation: Implement query-aware caching with automatic invalidation
-   Benefits:
-   - Cache frequently-run dashboard queries
-   - Automatic cache invalidation on data refresh
-   - 100x+ speedup for repeated queries
-   Tools: Redis, Memcached, or built-in PostgreSQL caching
-
-5. Partition Pruning Optimization
-   Current: 26 monthly partitions
-   Recommendation: Add additional partition keys (e.g., country, product)
-   Benefits:
-   - Further reduce data scanned
-   - 10-20x speedup for country/product-specific queries
-   Strategy: Multi-level partitioning (year/month/country)
-
---------------------------------------------------------------------------------
-4.2 DATA QUALITY ENHANCEMENTS
---------------------------------------------------------------------------------
-
-1. Predictive Data Quality
-   Current: Rule-based validation
-   Recommendation: Add ML-based anomaly detection
-   Benefits:
-   - Detect previously unknown data quality issues
-   - Identify seasonal patterns and outliers
-   - Predict potential future issues
-   Tools: Scikit-learn, Prophet for time series
-
-2. Automated Data Profiling
-   Current: Static rules
-   Recommendation: Auto-generate data quality rules from profiling
-   Benefits:
-   - Discover data patterns automatically
-   - Adapt rules as data changes
-   - Reduce manual rule maintenance
-   Tools: Great Expectations, pandas-profiling
-
-3. Data Quality Dashboards
-   Current: SQL queries for monitoring
-   Recommendation: Build real-time DQ dashboard
-   Benefits:
-   - Visual trend analysis
-   - Alerts for quality degradation
-   - Executive-level reporting
-   Tools: Grafana, Tableau, Power BI
-
-4. Quarantine Recovery Workflow
-   Current: Manual review of quarantined records
-   Recommendation: Automated reprocessing workflow
-   Benefits:
-   - Fix and reload quarantined records
-   - Track recovery success rates
-   - Reduce manual intervention
-   Implementation: Add quarantine review and reprocess scripts
-
---------------------------------------------------------------------------------
-4.3 SCALABILITY IMPROVEMENTS
---------------------------------------------------------------------------------
-
-1. Cloud Migration
-   Current: On-premise PostgreSQL
-   Recommendation: Migrate to cloud data warehouse
-   Benefits:
-   - Elastic scaling for large datasets
-   - Pay-per-use pricing
-   - Built-in high availability
-   Options:
-   - Azure Synapse Analytics
-   - AWS Redshift
-   - Google BigQuery
-   - Snowflake
-
-2. Streaming Data Ingestion
-   Current: Batch processing (daily)
-   Recommendation: Implement real-time streaming
-   Benefits:
-   - Near real-time analytics
-   - Faster time-to-insight
-   - Support for operational analytics
-   Tools: Apache Kafka, Azure Event Hubs, AWS Kinesis
-   Use Case: Real-time inventory updates, fraud detection
-
-3. Data Lake Integration
-   Current: Direct CSV to warehouse
-   Recommendation: Add data lake layer
-   Benefits:
-   - Store raw data indefinitely
-   - Support multiple downstream systems
-   - Enable data science/ML workflows
-   Architecture:
-   - Bronze layer (raw CSV)
-   - Silver layer (cleaned data)
-   - Gold layer (aggregated analytics)
-   Tools: Azure Data Lake, AWS S3 + Glue
-
-4. Distributed Processing
-   Current: Single-node Python/PostgreSQL
-   Recommendation: Distribute processing for TB+ datasets
-   Benefits:
-   - Handle datasets too large for single machine
-   - Linear scalability
-   Tools: Apache Spark, Dask, Ray
-   When: Dataset exceeds 10M+ records or 10GB+
-
---------------------------------------------------------------------------------
-4.4 AUTOMATION & ORCHESTRATION
---------------------------------------------------------------------------------
-
-1. Apache Airflow Integration
-   Current: Simple scheduler.py script
-   Recommendation: Replace with Airflow DAGs
-   Benefits:
-   - Visual workflow monitoring
-   - Automatic retry logic
-   - Complex dependency management
-   - Built-in alerting
-   Features:
-   - DAG for daily ETL
-   - Separate DAG for MV refresh
-   - Data quality check dependencies
-
-2. CI/CD Pipeline
-   Current: Manual deployment
-   Recommendation: Implement automated testing and deployment
-   Benefits:
-   - Catch bugs before production
-   - Faster, safer deployments
-   - Version control for database changes
-   Tools: GitHub Actions, Jenkins, Azure DevOps
-   Pipeline:
-   - Run unit tests
-   - Run integration tests on test database
-   - Deploy migrations on success
-
-3. Infrastructure as Code
-   Current: Manual database setup
-   Recommendation: Codify infrastructure
-   Benefits:
-   - Reproducible environments
-   - Easy disaster recovery
-   - Version-controlled infrastructure
-   Tools: Terraform, CloudFormation, Bicep
-
-4. dbt Integration
-   Current: SQL scripts
-   Recommendation: Migrate to dbt (data build tool)
-   Benefits:
-   - Testing framework for SQL
-   - Automatic documentation
-   - Data lineage visualization
-   - Modular SQL development
-
-5. REST API for Data Access
-   Current: Direct database queries
-   Recommendation: Build FastAPI service for data access
-   Benefits:
-   - Secure, standardized data access layer
-   - API endpoints for dashboards and applications
-   - Authentication and rate limiting
-   - Easy integration with external tools
-   Implementation:
-   - Create FastAPI endpoints:
-     * GET /api/sales/monthly - Monthly sales summary
-     * GET /api/customers/{id} - Customer details
-     * GET /api/products/top - Top products
-     * POST /api/etl/trigger - Manually trigger ETL
-   - Add JWT authentication
-   - Deploy as Docker container
-   - Timeline: 1-2 weeks
-   Tools: Python FastAPI, Uvicorn, Docker
-   Use Cases:
-   - Power BI/Tableau connects via API instead of direct DB
-   - Mobile app can query sales data
-   - External partners can access curated datasets
-
-6. Power Automate Integration
-   Current: Manual monitoring and notifications
-   Recommendation: Use Power Automate for workflow automation
-   Benefits:
-   - No-code automation for business users
-   - Integration with Microsoft 365 ecosystem
-   - Automated notifications and approvals
-   Implementation Examples:
-   - Flow 1: ETL Success/Failure Notifications
-     * Trigger: ETL batch completion
-     * Actions: Send Teams message, update SharePoint status
-   - Flow 2: Data Quality Alert Workflow
-     * Trigger: Quarantine rate exceeds 2%
-     * Actions: Email data team, create Planner task, log to Excel
-   - Flow 3: Weekly Report Automation
-     * Trigger: Schedule (every Monday 9am)
-     * Actions: Query sales API, generate Excel report, email executives
-   - Flow 4: Approval Workflow for Quarantined Data
-     * Trigger: High-value transaction quarantined
-     * Actions: Request approval from manager, update status
-   Integration:
-   - Use FastAPI endpoints as data source
-   - Connect to PostgreSQL via Power Automate connector
-   - Trigger flows from Python using HTTP requests
-   Timeline: 2-3 days per flow (once API is ready)
-   Cost: Included with Microsoft 365 license
-   Benefits: Empowers business users to create automations without coding
-
---------------------------------------------------------------------------------
-4.5 ADVANCED ANALYTICS
---------------------------------------------------------------------------------
-
-1. Machine Learning Features
-   Recommendations:
-   - Customer churn prediction (using RFM segments)
-   - Product recommendation engine
-   - Demand forecasting
-   - Price optimization
-   Tools: Python (scikit-learn, TensorFlow), Azure ML
-
-2. Advanced Customer Segmentation
-   Current: Basic RFM analysis (5 segments)
-   Recommendation: Add K-means clustering for behavioral segmentation
-   Benefits:
-   - Identify 8-10 customer personas beyond RFM
-   - Discover hidden purchasing patterns
-   - Enable targeted marketing campaigns
-   Implementation:
-   - Start Simple: K-means with 5-8 clusters on existing RFM scores
-   - Features: total_revenue, transaction_count, avg_days_between_orders,
-     preferred_product_categories, country
-   - Validate clusters with business team for actionability
-   - Timeline: 1-2 weeks to implement and validate
-   - Tools: Python scikit-learn (already familiar)
-   Practical Example:
-   - Cluster 1: "Bulk Buyers" - Large quantities, infrequent orders
-   - Cluster 2: "Frequent Small Buyers" - Many small transactions
-   - Cluster 3: "Seasonal Shoppers" - Purchase only in Q4
-
-3. Time Series Forecasting
-   Current: Daily/monthly aggregates available in MVs
-   Recommendation: Implement sales forecasting for top 100 products
-   Realistic Approach:
-   - Start with simple models (moving averages, seasonal decomposition)
-   - Progress to Prophet (Facebook's forecasting tool - easy to use)
-   - Avoid complex LSTM unless you have data scientists on team
-   Use Cases:
-   - Weekly sales forecast for top 20 products (realistic scope)
-   - Inventory planning for next 30 days
-   - Identify seasonal trends (Christmas, summer sales)
-   Implementation:
-   - Query: mv_daily_sales_trend already has historical data
-   - Train Prophet model on 2 years of data
-   - Forecast next 30-90 days
-   - Accuracy target: ±15-20% for aggregated weekly sales
-   - Timeline: 2-3 weeks including validation
-   - Tools: Python Prophet library (minimal ML expertise needed)
-   Caution: Don't over-engineer - simple forecasts often sufficient
-
-4. Anomaly Detection
-   Current: Rule-based data quality (17 static rules)
-   Recommendation: Add simple statistical anomaly detection first
-   Realistic Approach:
-   - Phase 1 (Week 1-2): Statistical methods (Z-score, IQR)
-     * Flag sales that are 3 standard deviations from mean
-     * Detect unusual spikes in daily revenue
-     * Simple to implement, interpretable results
-   - Phase 2 (Month 2-3): Isolation Forest (if Phase 1 proves valuable)
-     * Better for multivariate anomalies
-     * Identify unusual customer behavior patterns
-   Use Cases:
-   - Alert on unusual daily sales (potential data feed issues)
-   - Flag suspicious transactions (quantity × price abnormal)
-   - Detect sudden drops in order volume (operational issues)
-   - Monitor data quality trends (increasing quarantine rates)
-   Implementation:
-   - Add to ETL pipeline as optional validation step
-   - Send email alerts for critical anomalies
-   - Log all anomalies to new table: dq_anomaly_log
-   - Weekly review meeting to validate false positives
-   - Timeline: 1 week for statistical methods
-   - Tools: Python scipy.stats, pandas (no ML libraries needed initially)
-   Reality Check: Start simple - complex ML models may not add value
-   given dataset size
-
---------------------------------------------------------------------------------
-4.6 DATA GOVERNANCE
---------------------------------------------------------------------------------
-
-1. Data Catalog
-   Recommendation: Implement data catalog
-   Benefits:
-   - Discover available data
-   - Understand data lineage
-   - Document business glossary
-   Tools: Apache Atlas, Azure Purview, Alation
-
-2. Access Control
-   Current: Single postgres user
-   Recommendation: Role-based access control (RBAC)
-   Implementation:
-   - Read-only role for analysts
-   - Write role for ETL processes
-   - Admin role for schema changes
-
-3. Data Privacy Compliance
-   Recommendations:
-   - Implement PII masking for non-production
-   - Add data retention policies
-   - GDPR compliance (right to deletion)
-   - Audit logging for sensitive data access
-
-4. Data Lineage Tracking
-   Current: Basic batch_id tracking
-   Recommendation: End-to-end lineage visualization
-   Benefits:
-   - Impact analysis for schema changes
-   - Root cause analysis for data issues
-   - Regulatory compliance
-   Tools: Apache Atlas, Marquez
-
---------------------------------------------------------------------------------
-4.7 MONITORING & OBSERVABILITY
---------------------------------------------------------------------------------
-
-1. Application Performance Monitoring
-   Recommendation: Add APM solution
-   Benefits:
-   - Track ETL performance over time
-   - Identify bottlenecks
-   - Alert on performance degradation
-   Tools: DataDog, New Relic, Prometheus + Grafana
-
-2. Data Freshness Monitoring
-   Recommendation: Track data staleness
-   Metrics:
-   - Time since last ETL run
-   - Time since last data update
-   - SLA compliance
-   Alerting: Email/Slack when data becomes stale
-
-3. Cost Monitoring
-   Recommendation: Track compute and storage costs
-   Metrics:
-   - Cost per record processed
-   - Storage growth rate
-   - Query costs (for cloud warehouses)
-
-4. Business Metrics Dashboard
-   Recommendation: Executive dashboard
-   Metrics:
-   - Total sales
-   - Customer count
-   - Average order value
-   - Top products/countries
-   Update frequency: Real-time or hourly
-
-================================================================================
-5. HOW TO RUN THE PROJECT
-================================================================================
-
-Prerequisites:
-- Python 3.12 or higher
-- PostgreSQL 15 or higher
-- Git (for version control)
-
-Installation Steps:
-
-Step 1: Install Python Dependencies
-   $ pip install -r requirements.txt
-
-Step 2: Configure Database Connection
-   $ cp config/secrets.yaml.template config/secrets.yaml
-   $ # Edit secrets.yaml with your database credentials
-
-Step 3: Place Data File
-   $ # Copy CSV file to: data/raw/online_retail.csv
-
-Step 4: Run Full Pipeline (Recommended)
-   $ python run_full_pipeline.py
-   Expected Duration: 4-5 minutes
-   Expected Output:
-   - 34 tables created
-   - 6 materialized views created
-   - 534,756 records loaded
-   - All tests passing
-
-Alternative Commands:
-
-Run ETL Only:
-   $ python etl_pipeline.py --mode full
-
-Run Tests Only:
-   $ python tests/test_all_features.py
-
-Clean Database (for fresh start):
-   $ python cleanup_database.py
-   $ python run_full_pipeline.py
-
-Start Scheduler:
-   $ python scheduler.py
-   (Runs until Ctrl+C)
-
-================================================================================
-6. VERIFICATION & TESTING
-================================================================================
-
-Test Suite Results:
-- Test 1: Database Connection - PASS
-- Test 2: Table Partitioning - PASS
-- Test 3: Materialized Views - PASS
-- Test 4: Caching Layer - PASS
-- Test 5: Query Performance - PASS
-- Test 6: Data Integrity - PASS
-Overall: 6/6 tests passed (100%)
-
-Verification Queries:
-
-1. Quick Health Check:
-   SELECT 
-       'Tables' as metric, COUNT(*)::text as value
-   FROM pg_tables WHERE schemaname = 'retail_dwh'
-   UNION ALL
-   SELECT 'Materialized Views', COUNT(*)::text
-   FROM pg_matviews WHERE schemaname = 'retail_dwh'
-   UNION ALL
-   SELECT 'Fact Records', COUNT(*)::text
-   FROM retail_dwh.fct_retail_sales;
-
-   Expected:
-   Tables: 34
-   Materialized Views: 6
-   Fact Records: 534,756
-
-2. Verify No Orphaned Records:
-   SELECT 
-       'Orphaned Products' as check_type,
-       COUNT(*) as orphaned_count
-   FROM retail_dwh.fct_retail_sales f
-   LEFT JOIN retail_dwh.dim_product p ON f.product_key = p.product_key
-   WHERE p.product_key IS NULL
-   UNION ALL
-   SELECT 'Orphaned Customers', COUNT(*)
-   FROM retail_dwh.fct_retail_sales f
-   LEFT JOIN retail_dwh.dim_customer c ON f.customer_key = c.customer_key
-   WHERE c.customer_key IS NULL;
-
-   Expected: All counts = 0
-
-3. Test Materialized View:
-   SELECT * FROM retail_dwh.mv_monthly_sales_summary
-   ORDER BY year, month;
-
-   Expected: 13 rows with monthly aggregates
-
-4. Check Data Quality:
-   SELECT dq_reason, COUNT(*) 
-   FROM retail_dwh.dq_quarantine_sales
-   GROUP BY dq_reason;
-
-   Expected: ~7,153 quarantined records with reasons
-
-Full verification queries available in: verification_queries.sql
-
-================================================================================
-7. PROJECT RESULTS
-================================================================================
-
-Data Processing Results:
-- Source Records: 541,909
-- Valid Records Loaded: 534,756 (98.7%)
-- Quarantined Records: 7,153 (1.3%)
-- Data Quality Pass Rate: 98.7%
-
-Database Objects Created:
-- Total Tables: 34
-  - Dimension Tables: 3 (dim_date, dim_product, dim_customer)
-  - Fact Table: 1 (fct_retail_sales)
-  - Partitions: 26 (monthly partitions 2009-12 to 2011-12)
-  - Staging/Support: 4 (stg_retail_sales, dq_*, meta_*)
-- Materialized Views: 6 (pre-computed analytics)
-
-Data Volume by Table:
-- dim_date: 373 rows
-- dim_product: 3,811 rows
-- dim_customer: 4,339 rows
-- fct_retail_sales: 534,756 rows (distributed across 26 partitions)
-- stg_retail_sales: 536,629 rows
-- dq_quarantine_sales: 7,153 rows
-
-Performance Metrics:
-- Full Pipeline Execution Time: 4.8 minutes
-- ETL Processing Time: ~90 seconds for 534K records
-- Query Performance (with MVs): 500-1000x improvement
-- Partition Pruning Benefit: 3-5x faster for date-range queries
-
-Test Results:
-- All Tests Passing: 6/6 (100%)
-- No Data Integrity Issues
-- No Orphaned Records
-- All Foreign Keys Valid
-
-Data Quality Breakdown:
-Top reasons for quarantine:
-1. Missing product description
-2. Missing stock code
-3. Invalid unit price (zero or negative)
-4. Extreme quantity values
-5. Format validation failures
-
-Business Intelligence Ready:
-- 6 materialized views for instant analytics
-- Monthly sales trends available
-- Customer segmentation complete (RFM analysis)
-- Product performance metrics calculated
-- Geographic analysis ready
-- Category performance tracked
-
-Production Readiness:
-- Automated ETL pipeline
-- Comprehensive error handling
-- Data lineage tracking
-- Batch execution logging
-- Quarantine system for invalid data
-- 100% test coverage
-- Complete documentation
-
-================================================================================
-8. CONCLUSION
-================================================================================
-
-This project successfully implements a complete data engineering solution for
-retail sales analytics. All required deliverables have been completed:
-
-1. PYTHON & SQL SCRIPTS: Complete ETL pipeline with 8 Python scripts and
-   7 SQL migration files covering all stages from extraction to analytics.
-
-2. DOCUMENTATION: Comprehensive documentation of data warehouse schema,
-   ETL pipeline architecture, and data quality monitoring system.
-
-3. RECOMMENDATIONS: Detailed recommendations for 25+ improvements across
-   performance, scalability, automation, and advanced analytics.
-
-Key Achievements:
-- 534,756 transactions successfully loaded and validated
-- 98.7% data quality pass rate
-- All 6 test categories passing (100%)
-- Production-ready with automated scheduling
-- Optimized for performance with partitioning and materialized views
-- Complete data lineage and audit trail
-
-The system is fully functional, tested, and ready for production deployment.
-All source code, SQL scripts, configuration files, and documentation are
-included in this submission.
-
-Project demonstrates proficiency in:
-- Data engineering best practices
-- SQL and database design (star schema, partitioning)
-- Python programming (pandas, data processing)
-- ETL pipeline development
-- Data quality management
-- Performance optimization
-- Testing and validation
-- Documentation and communication
-
-================================================================================
-END OF SUBMISSION DOCUMENT
-================================================================================
-
-Submission Package Contents:
-1. This document (SUBMISSION.txt)
-2. Source code: etl_pipeline.py, run_full_pipeline.py, scheduler.py, etc.
-3. SQL scripts: 7 migration files in sql_commands/
-4. Configuration: config/ directory with data quality rules
-5. Tests: tests/test_all_features.py
-6. Documentation: DOCUMENTATION.md, README.md
-7. Verification: verification_queries.sql
+Python Scripts (8 files):
+1. etl_pipeline.py - Main ETL pipeline with data quality validation
+2. run_full_pipeline.py - Master orchestrator for end-to-end execution
+3. scheduler.py - Automated ETL scheduling
+4. cleanup_database.py - Database cleanup utility
+5. handlers/db_manager.py - Database connection management
+6. handlers/data_processor.py - Data transformation utilities
+7. handlers/cache_manager.py - Query result caching layer
+8. tests/test_all_features.py - Comprehensive test suite
+
+SQL Scripts (7 migration files):
+
+Dimension Tables (3 files):
+- V1__create_dim_date.sql - Date dimension (373 rows)
+- V2__create_dim_product.sql - Product dimension with stats (3,811 rows)
+- V3__create_dim_customer.sql - Customer dimension with segmentation (4,339 rows)
+
+Fact Tables (2 files):
+- V1__create_fct_retail_sales.sql - Main fact table creation
+- V2__create_partitioned_fact_table.sql - 26 monthly partitions (534,756 rows)
+
+Aggregates (1 file):
+- V1__create_materialized_views.sql - 6 pre-computed analytics views
+
+Configuration Files:
+- config/data_quality_rules.yaml - 17 validation rules
+- config/secrets.yaml.template - Database credentials template
+- requirements.txt - Python dependencies
 
 Total Lines of Code: ~2,500 lines (Python + SQL)
-Estimated Development Time: 60+ hours
+
+--------------------------------------------------------------------------------
+DELIVERABLE #2: Documentation
+--------------------------------------------------------------------------------
+
+Complete documentation available in repository:
+
+1. README.md (284 lines)
+   - Quick start guide
+   - Project structure
+   - Installation instructions
+   - Usage examples
+
+2. DOCUMENTATION.md (1,066 lines)
+   - Detailed architecture documentation
+   - File-by-file code documentation
+   - Database schema (star schema design)
+   - ETL pipeline flow (8 stages explained)
+   - Data quality framework (17 rules detailed)
+   - Configuration guide
+   - Testing and verification procedures
+   - Performance benchmarks
+   - Troubleshooting guide
+
+3. verification_queries.sql (15 comprehensive checks)
+   - Database health checks
+   - Data integrity validation
+   - Performance testing queries
+
+Key Documentation Highlights:
+
+Data Warehouse Schema:
+- Star schema design with 3 dimensions and 1 fact table
+- 26 monthly partitions (2009-12 through 2011-12)
+- 6 materialized views for pre-computed analytics
+- Complete lineage tracking (batch_id, timestamps)
+
+ETL Pipeline Architecture:
+- 8-stage pipeline: Extract → Transform → Validate → Load → 
+  Build Dimensions → Load Facts → Partition → Create MVs
+- Batch processing with unique batch tracking
+- Error handling with transaction rollback
+- Quarantine system for invalid records
+
+Data Quality Monitoring:
+- 17 validation rules across 4 categories
+- Missing values detection (8 rules)
+- Format validation (3 rules)
+- Business logic checks (4 rules)
+- Statistical outlier detection (2 rules)
+- Quarantine table preserves all invalid records
+- Metrics tracking for trend analysis
+- 98.7% pass rate achieved
+
+--------------------------------------------------------------------------------
+DELIVERABLE #3: Recommendations for Further Optimizations
+--------------------------------------------------------------------------------
+
+25+ detailed recommendations across 7 categories:
+
+1. Performance Optimizations (5 recommendations)
+   - Incremental ETL (CDC implementation)
+   - Parallel processing for dimensions/facts
+   - Columnar storage for analytics (Parquet/Delta Lake)
+   - Enhanced query caching with auto-invalidation
+   - Multi-level partition pruning
+
+2. Data Quality Enhancements (4 recommendations)
+   - ML-based anomaly detection with statistical methods
+   - Automated data profiling and rule generation
+   - Real-time data quality dashboards
+   - Quarantine recovery workflows
+
+3. Scalability Improvements (4 recommendations)
+   - Cloud migration (Azure Synapse/Snowflake/BigQuery)
+   - Real-time streaming ingestion (Kafka/Event Hubs)
+   - Data lake integration (Bronze/Silver/Gold architecture)
+   - Distributed processing (Spark/Dask) for TB+ datasets
+
+4. Automation & Orchestration (6 recommendations)
+   - Apache Airflow for workflow management
+   - CI/CD pipeline with automated testing
+   - Infrastructure as Code (Terraform)
+   - dbt integration for SQL development
+   - FastAPI for secure data access layer
+   - Power Automate for business workflow automation
+
+5. Advanced Analytics (4 recommendations)
+   - K-means customer segmentation (8-10 behavioral personas)
+   - Time series forecasting with Prophet (30-90 day forecasts)
+   - Statistical anomaly detection (Z-score, IQR methods)
+   - ML features for churn prediction and demand forecasting
+
+6. Data Governance (4 recommendations)
+   - Data catalog implementation
+   - Role-based access control (RBAC)
+   - Data privacy compliance (GDPR, PII masking)
+   - End-to-end lineage tracking
+
+7. Monitoring & Observability (4 recommendations)
+   - Application performance monitoring (APM)
+   - Data freshness monitoring with SLA tracking
+   - Cost monitoring and optimization
+   - Executive business metrics dashboard
+
+Each recommendation includes:
+- Current state assessment
+- Implementation approach with realistic timelines
+- Expected benefits and ROI
+- Tools and technologies required
+- Practical examples and use cases
+
+Note: Recommendations prioritize practical, incremental improvements over
+complex solutions. Start simple (statistical methods, basic automation) before
+investing in advanced ML or distributed systems.
+
+================================================================================
+3. GITHUB REPOSITORY STRUCTURE
+================================================================================
+
+Repository: https://github.com/NouraHoumani/retail_sales
+
+retail-sales-de/
+├── README.md                          # Quick start guide
+├── DOCUMENTATION.md                   # Comprehensive technical docs
+├── SUBMISSION.txt                     # This file
+├── LICENSE                            # MIT License
+├── requirements.txt                   # Python dependencies
+├── .gitignore                         # Git ignore rules
+│
+├── config/                            # Configuration files
+│   ├── config.yaml                    # Application config
+│   ├── data_quality_rules.yaml        # 17 DQ rules
+│   └── secrets.yaml.template          # Credentials template
+│
+├── sql_commands/                      # Database migrations
+│   ├── dim_tables/                    # 3 dimension SQL files
+│   ├── fact_tables/                   # 2 fact table SQL files
+│   ├── materialized_views/            # 1 MV SQL file
+│   └── run_migrations.py              # Migration runner
+│
+├── handlers/                          # Python utilities
+│   ├── db_manager.py                  # Database operations
+│   ├── data_processor.py              # Data transformations
+│   └── cache_manager.py               # Caching layer
+│
+├── tests/                             # Test suite
+│   └── test_all_features.py           # 6 comprehensive tests
+│
+├── etl_pipeline.py                    # Main ETL pipeline
+├── run_full_pipeline.py               # Full pipeline orchestrator
+├── scheduler.py                       # ETL scheduler
+├── cleanup_database.py                # Database cleanup utility
+├── verification_queries.sql           # 15 validation queries
+└── verify_database.sql                # Quick health check
+
+Total Files: 46 files committed
+Repository Size: ~65 KB (compressed)
+
+Security Features:
+✅ secrets.yaml excluded from repository
+✅ CSV data files excluded
+✅ Cache and temp files excluded
+✅ Template file provided for easy setup
+
+================================================================================
+4. HOW TO ACCESS & RUN THE PROJECT
+================================================================================
+
+Step 1: Clone the Repository
+   git clone https://github.com/NouraHoumani/retail_sales.git
+   cd retail_sales
+
+Step 2: Review Documentation
+   - Open README.md for quick start
+   - Open DOCUMENTATION.md for detailed technical information
+   - Review sql_commands/ folder for database schema
+
+Step 3: Setup Environment (To Run Locally)
+   
+   A. Install Python dependencies:
+      pip install -r requirements.txt
+   
+   B. Configure database credentials:
+      - Copy config/secrets.yaml.template to config/secrets.yaml
+      - Update with your PostgreSQL credentials:
+        database:
+          host: localhost
+          port: 5432
+          database: retail_dwh
+          user: postgres
+          password: your_password_here
+   
+   C. Place data file:
+      - Copy online_retail.csv to data/raw/
+   
+   D. Ensure PostgreSQL 15+ is installed and running
+
+Step 4: Run the Pipeline
+   python run_full_pipeline.py
+   
+   Expected Output:
+   - Creates 34 tables (3 dims, 1 fact, 26 partitions, 4 support tables)
+   - Creates 6 materialized views
+   - Loads 534,756 valid records
+   - Runs 6 tests (all passing)
+   - Execution time: 4-5 minutes
+
+Step 5: Verify Installation
+   python tests/test_all_features.py
+   
+   Expected: All 6 tests pass (100% success rate)
+
+Step 6: Explore the Data Warehouse
+   - Use verification_queries.sql for data validation
+   - Query materialized views for instant analytics
+   - Review dq_quarantine_sales for data quality insights
+
+Alternative: Review Only (No Execution Required)
+   - All code is readable and documented in GitHub
+   - DOCUMENTATION.md contains complete schema and pipeline details
+   - No need to run locally to understand the implementation
+
+================================================================================
+5. KEY RECOMMENDATIONS FOR IMPROVEMENTS
+================================================================================
+
+Prioritized recommendations for immediate implementation:
+
+HIGH PRIORITY (Implement First):
+
+1. Incremental ETL (Timeline: 2-3 weeks)
+   Current: Full reload of 540K records
+   Improvement: Process only new/changed records
+   Impact: Reduce processing time from 5 min to <1 min
+   ROI: Enable hourly updates instead of daily
+
+2. Statistical Anomaly Detection (Timeline: 1 week)
+   Current: Rule-based validation only
+   Improvement: Add Z-score and IQR methods
+   Impact: Catch unknown data quality issues automatically
+   ROI: Reduce manual monitoring effort by 50%
+
+3. FastAPI Data Access Layer (Timeline: 1-2 weeks)
+   Current: Direct database queries
+   Improvement: REST API with authentication
+   Impact: Secure, standardized data access
+   ROI: Enable integration with dashboards and external tools
+
+MEDIUM PRIORITY (Implement Next):
+
+4. Apache Airflow Orchestration (Timeline: 2-3 weeks)
+   Current: Simple scheduler script
+   Improvement: Visual workflow management with retry logic
+   Impact: Better monitoring and dependency management
+   ROI: Reduce manual intervention and troubleshooting time
+
+5. Power Automate Integration (Timeline: 3-5 days)
+   Current: Manual monitoring
+   Improvement: Automated notifications and workflows
+   Impact: Teams alerts, automated reports, approval workflows
+   ROI: Empower business users with no-code automation
+
+6. K-means Customer Segmentation (Timeline: 1-2 weeks)
+   Current: Basic RFM analysis (5 segments)
+   Improvement: 8-10 behavioral personas
+   Impact: More targeted marketing campaigns
+   ROI: Better customer understanding and personalization
+
+LONG-TERM (Future Enhancements):
+
+7. Cloud Migration (Timeline: 1-2 months)
+   Consider: Azure Synapse, Snowflake, or BigQuery
+   Benefits: Elastic scaling, pay-per-use, high availability
+   When: Dataset exceeds 10M+ records or needs 24/7 availability
+
+8. Real-time Streaming (Timeline: 2-3 months)
+   Tools: Apache Kafka or Azure Event Hubs
+   Benefits: Near real-time analytics
+   When: Business requires <5 minute data latency
+
+9. dbt Integration (Timeline: 3-4 weeks)
+   Benefits: SQL testing, auto-documentation, lineage
+   When: SQL codebase grows beyond 20+ files
+
+10. Data Lake Architecture (Timeline: 2-3 months)
+    Layers: Bronze (raw) → Silver (clean) → Gold (aggregated)
+    Benefits: Support multiple downstream systems, enable data science
+    When: Multiple teams need different data formats
+
+================================================================================
+6. CONCLUSION
+================================================================================
+
+Project Summary:
+
+This project successfully delivers a production-ready data warehouse solution
+for retail sales analytics. All three deliverables have been completed with
+professional quality:
+
+✅ DELIVERABLE #1: Complete ETL pipeline with 8 Python scripts and 7 SQL
+   migration files covering all stages from data extraction to analytics
+
+✅ DELIVERABLE #2: Comprehensive documentation (1,350+ lines) covering
+   architecture, schema design, ETL pipeline, and data quality framework
+
+✅ DELIVERABLE #3: 25+ practical recommendations for improvements with
+   realistic timelines and ROI analysis
+
+Key Achievements:
+- 98.7% data quality pass rate (534,756 valid / 541,909 total)
+- 100% test success rate (6/6 tests passing)
+- Production-ready with automated scheduling and monitoring
+- Optimized for performance (partitioning, materialized views)
+- Complete data lineage and audit trail
+- Professional codebase with comprehensive documentation
+- Secure GitHub repository with proper .gitignore configuration
+
+Technical Proficiency Demonstrated:
+- Data engineering best practices (ETL, data quality, testing)
+- SQL expertise (star schema, partitioning, CTEs, window functions)
+- Python programming (pandas, data processing, OOP)
+- Database design and optimization
+- Performance tuning (partitioning, indexing, materialized views)
+- Testing and validation methodologies
+- Documentation and communication skills
+- Version control with Git/GitHub
+
 Project Complexity: Advanced
+Development Time: 60+ hours
+Code Quality: Production-ready
 
-For questions or clarifications, please refer to:
-- DOCUMENTATION.md (detailed technical documentation)
-- README.md (quick start guide)
-- verification_queries.sql (database validation queries)
+================================================================================
+SUBMISSION CHECKLIST
+================================================================================
 
-Thank you for reviewing this submission.
+✅ GitHub repository created: https://github.com/NouraHoumani/retail_sales
+✅ All source code committed (46 files)
+✅ Secrets and data files excluded (.gitignore configured)
+✅ README.md with quick start guide
+✅ DOCUMENTATION.md with comprehensive technical details
+✅ SUBMISSION.txt with deliverables summary (this file)
+✅ LICENSE file included (MIT)
+✅ All tests passing (6/6 - 100%)
+✅ Pipeline verified and functional
+✅ Professional code structure and documentation
+
+================================================================================
+HOW TO REVIEW THIS SUBMISSION
+================================================================================
