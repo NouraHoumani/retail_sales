@@ -1,0 +1,15 @@
+database:
+  host: xxxx
+  port: xxx
+  database: retail_sales_db
+  user: xxxx
+  password: 
+
+paths:
+  raw_data: data/raw
+  processed_data: data/processed
+  logs: logs
+
+ingestion:
+  batch_size: 5000
+  encoding: ISO-8859-1

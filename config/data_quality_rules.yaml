@@ -1,0 +1,148 @@
+
+metadata:
+  dataset: Online Retail Sales (UK-based, non-store online retail)
+  version: 2.0
+  last_updated: 2026-01-29
+  owner: Data Engineering Team
+  business_context: |
+    Company sells unique all-occasion gifts.
+    Customer base includes both retail customers and WHOLESALERS.
+    High quantities (>10,000 units) are NORMAL for wholesale orders.
+    InvoiceNo starting with 'C' indicates CANCELLATION.
+
+
+
+required_columns:
+  - InvoiceNo
+  - StockCode
+  - Description
+  - Quantity
+  - InvoiceDate
+  - UnitPrice
+  - CustomerID
+  - Country
+
+
+
+rules:
+  
+  - rule_id: DQ001
+    rule_name: remove_all_null_rows
+    category: data_integrity
+    description: Remove rows where ALL columns are NULL
+    action: drop
+    severity: critical
+    
+  - rule_id: DQ002
+    rule_name: remove_exact_duplicates
+    category: data_integrity
+    description: Remove exact duplicate rows
+    action: drop
+    severity: critical
+    
+  - rule_id: DQ003
+    rule_name: remove_missing_critical_fields
+    category: data_integrity
+    description: Remove rows missing InvoiceNo, StockCode, InvoiceDate, Quantity, or UnitPrice
+    critical_fields:
+      - InvoiceNo
+      - StockCode
+      - InvoiceDate
+      - Quantity
+      - UnitPrice
+    action: drop
+    severity: critical
+    notes: CustomerID is NOT critical (NULL = guest purchase)
+    
+  - rule_id: DQ004
+    rule_name: remove_unparseable_dates
+    category: data_integrity
+    description: Remove rows where InvoiceDate cannot be parsed
+    action: drop
+    severity: critical
+  
+  
+  - rule_id: AN001
+    rule_name: quarantine_suspicious_unit_price
+    category: anomaly_detection
+    description: Quarantine extremely high unit price with low quantity
+    condition: (UnitPrice > 10000) AND (abs(Quantity) < 100)
+    action: quarantine
+    severity: warning
+    
+  - rule_id: AN002
+    rule_name: quarantine_zero_quantity
+    category: anomaly_detection
+    description: Quarantine transactions with quantity = 0
+    action: quarantine
+    severity: warning
+    
+  - rule_id: AN003
+    rule_name: quarantine_negative_unit_price
+    category: anomaly_detection
+    description: Quarantine negative unit prices
+    action: quarantine
+    severity: warning
+  
+  
+  - rule_id: DS001
+    rule_name: fill_missing_description
+    category: data_standardization
+    description: Fill NULL descriptions with placeholder
+    fill_value: UNKNOWN PRODUCT
+    severity: low
+    
+  - rule_id: DS002
+    rule_name: fill_missing_country
+    category: data_standardization
+    description: Fill NULL country with placeholder
+    fill_value: UNKNOWN
+    severity: low
+  
+  
+  - rule_id: BL001
+    rule_name: flag_cancellations
+    category: business_logic
+    description: Flag cancelled transactions (InvoiceNo starts with 'C')
+    flag_column: is_cancellation
+    exclusion_rule: Exclude from revenue calculations
+    
+  - rule_id: BL002
+    rule_name: flag_adjustments
+    category: business_logic
+    description: Flag inventory adjustments
+    flag_column: is_adjustment
+    exclusion_rule: Exclude from sales calculations
+    
+  - rule_id: BL003
+    rule_name: flag_guest_purchases
+    category: business_logic
+    description: Flag guest purchases (no CustomerID)
+    flag_column: is_guest_purchase
+    
+  - rule_id: BL004
+    rule_name: flag_valid_sales
+    category: business_logic
+    description: Flag valid sales transactions
+    flag_column: is_valid_sale
+    
+  - rule_id: BL005
+    rule_name: flag_returns
+    category: business_logic
+    description: Flag customer returns
+    flag_column: is_return
+
+  
+  - rule_id: CALC001
+    rule_name: calculate_line_total
+    category: calculation
+    description: Calculate line_total = quantity × unit_price
+    output_column: line_total
+
+
+
+wholesale_context:
+  note: |
+    High quantities (80,000+ units) are LEGITIMATE wholesale orders.
+    no quarantine based on quantity alone
+    Only quarantine suspicious price/quantity combinations.

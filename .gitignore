@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Data files
+data/raw/*.csv
+data/processed/
+*.xlsx
+*.xls
+
+# Logs
+*.log
+logs/
+
+# Config secrets
+config/secrets.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
+
+# Test outputs
+test_results.txt
+final_test.txt
+
+# Temporary files
+temp/
+tmp/
+*.tmp
